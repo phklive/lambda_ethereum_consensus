@@ -48,4 +48,11 @@ defmodule LambdaEthereumConsensus.StateTransition.Accessors do
     # TODO: Hash + add
     # domain_type + epoch + mix
   end
+
+  # def get_seed(state: BeaconState, epoch: Epoch, domain_type: DomainType) -> Bytes32:
+  #     """
+  #     Return the seed at ``epoch``.
+  #     """
+  #     mix = get_randao_mix(state, Epoch(epoch + EPOCHS_PER_HISTORICAL_VECTOR - MIN_SEED_LOOKAHEAD - 1))  # Avoid underflow
+  #     return hash(domain_type + uint_to_bytes(epoch) + mix)
 end
