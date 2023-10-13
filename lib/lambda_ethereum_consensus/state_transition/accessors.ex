@@ -2,6 +2,7 @@ defmodule LambdaEthereumConsensus.StateTransition.Accessors do
   @moduledoc """
   Functions accessing the current beacon state
   """
+  alias LambdaEthereumConsensus.StateTransition.Predicates
   alias LambdaEthereumConsensus.StateTransition.Misc
   alias SszTypes.BeaconState
 
@@ -28,9 +29,28 @@ defmodule LambdaEthereumConsensus.StateTransition.Accessors do
   @spec get_beacon_proposer_index(BeaconState.t()) :: SszTypes.uint64()
   def get_beacon_proposer_index(state) do
     epoch = get_current_epoch(state)
-    # seed = hash(get_seed(state, epoch, DOMAIN_BEACON_PROPOSER) + uint_to_bytes(state.slot))
-    # indices = get_active_validator_indices(state, epoch)
+
+    seed =
+      :crypto.hash(
+        :sha256,
+        get_seed(state, epoch, ChainSpec.get("DOMAIN_BEACON_PROPOSER")) <> <<state.slot::64>>
+      )
+
+    indices = get_active_validator_indices(state, epoch)
+
     # return compute_proposer_index(state, indices, seed)
+  end
+
+  @doc """
+  Return the sequence of active validator indices at ``epoch``.
+  """
+  @spec get_active_validator_indices(BeaconState.t(), SszTypes.epoch()) ::
+          list(SszTypes.validator_index())
+  def get_active_validator_indices(state, epoch) do
+    state.validators
+    |> Enum.with_index()
+    |> Enum.filter(fn {validator, _index} -> Predicates.is_active_validator(validator, epoch) end)
+    |> Enum.map(fn {_validator, index} -> index end)
   end
 
   @doc """
@@ -45,14 +65,7 @@ defmodule LambdaEthereumConsensus.StateTransition.Accessors do
           ChainSpec.get("MIN_SEED_LOOKAHEAD") - 1
       )
 
-    # TODO: Hash + add
-    # domain_type + epoch + mix
+    pre_image = domain_type <> <<epoch::64>> <> mix
+    :crypto.hash(:sha256, pre_image)
   end
-
-  # def get_seed(state: BeaconState, epoch: Epoch, domain_type: DomainType) -> Bytes32:
-  #     """
-  #     Return the seed at ``epoch``.
-  #     """
-  #     mix = get_randao_mix(state, Epoch(epoch + EPOCHS_PER_HISTORICAL_VECTOR - MIN_SEED_LOOKAHEAD - 1))  # Avoid underflow
-  #     return hash(domain_type + uint_to_bytes(epoch) + mix)
 end
