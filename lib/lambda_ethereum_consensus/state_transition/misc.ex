@@ -23,21 +23,54 @@ defmodule LambdaEthereumConsensus.StateTransition.Misc do
         ) :: SszTypes.validator_index()
   def compute_proposer_index(state, indices, seed) do
     if length(indices) < 0, do: {:error, "Indices length is smaller than 0"}
+
+    max_random_byte = :math.pow(2, 8) - 1
+    i = 0
+    total = length(indices)
+    candidate_index = Enum.at(indices)
+  end
+
+  @doc """
+  Return the shuffled index corresponding to ``seed`` (and ``index_count``).
+  """
+  @spec compute_shuffled_index(SszTypes.uint64(), SszTypes.uint64(), SszTypes.bytes32()) ::
+          SszTypes.uint64()
+  def compute_shuffled_index(index, index_count, seed) do
+    unless index < index_count, do: {:error, "The index is greater than the index_count"}
+
+    Enum.reduce_while(0..(ChainSpec.get("SHUFFLE_ROUND_COUNT") - 1), index, fn current_round,
+                                                                               index_count ->
+      pivot =
+        :crypto.hash(:sha256, seed <> uint_to_bytes(<<current_round::8>>))
+        |> bytes_to_uint64()
+        |> rem(index_count)
+
+      flip = (pivot + index_count - index) |> rem(index_count)
+
+      position = max(index, flip)
+
+      source =
+        :crypto.hash(
+          :sha256,
+          seed <> uint_to_bytes(current_round) <> uint_to_bytes(div(position, 256))
+        )
+    end)
+  end
+
+  @doc """
+  uint_to_bytes is a function for serializing the uint type object to bytes in ENDIANNESS-endian.
+  The expected length of the output is the byte-length of the uint type.
+  """
+  @spec uint_to_bytes(SszTypes.uint64()) :: SszTypes.bytes32()
+  def uint_to_bytes(n) do
+    :binary.encode_unsigned(n, :little)
+  end
+
+  @doc """
+  Return the integer deserialization of ``data`` interpreted as ``ENDIANNESS``-endian.
+  """
+  @spec bytes_to_uint64(SszTypes.bytes32()) :: SszTypes.uint64()
+  def bytes_to_uint64(data) do
+    :binary.decode_unsigned(data, :little)
   end
 end
-
-# def compute_proposer_index(state: BeaconState, indices: Sequence[ValidatorIndex], seed: Bytes32) -> ValidatorIndex:
-#     """
-#     Return from ``indices`` a random index sampled by effective balance.
-#     """
-#     assert len(indices) > 0
-#     MAX_RANDOM_BYTE = 2**8 - 1
-#     i = uint64(0)
-#     total = uint64(len(indices))
-#     while True:
-#         candidate_index = indices[compute_shuffled_index(i % total, total, seed)]
-#         random_byte = hash(seed + uint_to_bytes(uint64(i // 32)))[i % 32]
-#         effective_balance = state.validators[candidate_index].effective_balance
-#         if effective_balance * MAX_RANDOM_BYTE >= MAX_EFFECTIVE_BALANCE * random_byte:
-#             return candidate_index
-#         i += 1
