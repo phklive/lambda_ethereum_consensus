@@ -5,6 +5,7 @@ defmodule OperationsTestRunner do
   @moduledoc """
   Runner for Operations test cases. See: https://github.com/ethereum/consensus-specs/tree/dev/tests/formats/operations
   """
+  alias LambdaEthereumConsensus.StateTransition.Operations
 
   # Map the operation-name to the associated operation-type
   @type_map %{
@@ -41,7 +42,7 @@ defmodule OperationsTestRunner do
   @disabled_handlers [
     "attestation",
     "attester_slashing",
-    "block_header",
+    # "block_header",
     "deposit",
     "proposer_slashing",
     "voluntary_exit",
@@ -88,5 +89,17 @@ defmodule OperationsTestRunner do
       |> SpecTestUtils.parse_yaml()
 
     assert true
+  end
+
+  defp handle_case("block_header", pre, operation, post, _case_dir) do
+    new_state = Operations.process_block_header(pre, operation)
+
+    case post do
+      nil ->
+        assert match?({:error, _message}, new_state)
+
+      _ ->
+        assert new_state == {:ok, post}
+    end
   end
 end

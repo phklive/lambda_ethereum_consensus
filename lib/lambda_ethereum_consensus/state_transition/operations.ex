@@ -1,0 +1,54 @@
+defmodule LambdaEthereumConsensus.StateTransition.Operations do
+  @moduledoc """
+  State transition Operations related functions
+  """
+
+  alias LambdaEthereumConsensus.StateTransition.Accessors
+  alias SszTypes.BeaconBlock
+  alias SszTypes.BeaconState
+  alias SszTypes.BeaconBlockHeader
+
+  @spec process_block_header(BeaconState.t(), BeaconBlock.t()) ::
+          {:ok, BeaconState.t()} | {:error, String.t()}
+  def process_block_header(state, block) do
+    cond do
+      # Verify that the slots match
+      block.slot != state.slot ->
+        {:error, "Block and State slots do not match."}
+
+      # Verify that the block is newer than latest block header
+      block.slot < state.latest_block_header.slot ->
+        {:error, "Block is older than latest block header."}
+
+
+      # Verify that proposer index is the correct index
+      block.proposer_index != Accessors.get_beacon_proposer_index(state) ->
+        IO.puts("proposer index:")
+        IO.inspect(block.proposer_index)
+        IO.puts("Accessors get prop index:")
+        IO.inspect(Accessors.get_beacon_proposer_index(state))
+        {:error, "Invalid proposer index"}
+
+      # Verify that the parent matches
+      block.parent_root != Ssz.hash_tree_root(state.latest_block_header) ->
+        {:error, "Parent does not match"}
+
+      true ->
+        # Cache current block as the new latest block
+        with {:ok, root} <- Ssz.hash_tree_root(block.body) do
+          %BeaconState{
+            state
+            | latest_block_header: %BeaconBlockHeader{
+                slot: block.slot,
+                proposer_index: block.proposer_index,
+                parent_root: block.parent_root,
+                state_root:
+                  <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0>>,
+                body_root: root
+              }
+          }
+        end
+    end
+  end
+end

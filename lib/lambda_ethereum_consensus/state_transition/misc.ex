@@ -5,6 +5,45 @@ defmodule LambdaEthereumConsensus.StateTransition.Misc do
   import Bitwise
 
   @doc """
+  Return from ``indices`` a random index sampled by effective balance.
+  """
+  @spec compute_proposer_index(
+          BeaconState.t(),
+          list(SszTypes.validator_index()),
+          SszTypes.bytes32()
+        ) :: SszTypes.validator_index()
+
+  def compute_proposer_index(_state, indices, _seed) when length(indices) <= 0 do
+    {:error, "The length of indices is smaller or equal to 0"}
+  end
+
+  def compute_proposer_index(state, indices, seed) do
+    compute_proposer(state, indices, seed, 0, length(indices))
+  end
+
+  defp compute_proposer(state, indices, seed, i, total) do
+    candidate_index =
+      with {:ok, index} <- compute_shuffled_index(rem(i, total), total, seed) do
+        Enum.at(indices, index)
+      end
+
+    random_byte =
+      :crypto.hash(:sha256, seed <> uint_to_bytes4(div(i, 32)))
+      |> :binary.bin_to_list()
+      |> Enum.at(rem(i, 32))
+
+    validator = Enum.at(state.validators, candidate_index)
+    effective_balance = validator.effective_balance
+
+    if effective_balance * Constants.max_random_byte() >=
+         ChainSpec.get("MAX_EFFECTIVE_BALANCE") * random_byte do
+      candidate_index
+    else
+      compute_proposer(state, indices, seed, i + 1, total)
+    end
+  end
+
+  @doc """
   Returns the epoch number at slot.
   """
   @spec compute_epoch_at_slot(SszTypes.slot()) :: SszTypes.epoch()
@@ -119,14 +158,14 @@ defmodule LambdaEthereumConsensus.StateTransition.Misc do
   end
 
   @spec bytes_to_uint64(binary()) :: SszTypes.uint64()
-  defp bytes_to_uint64(value) do
+  def bytes_to_uint64(value) do
     # Converts a binary value to a 64-bit unsigned integer
     <<first_8_bytes::unsigned-integer-little-size(64), _::binary>> = value
     first_8_bytes
   end
 
   @spec uint_to_bytes4(integer()) :: SszTypes.bytes4()
-  defp uint_to_bytes4(value) do
+  def uint_to_bytes4(value) do
     # Converts an unsigned integer value to a bytes 4 value
     <<value::unsigned-integer-little-size(32)>>
   end
