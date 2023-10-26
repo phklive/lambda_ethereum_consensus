@@ -19,9 +19,8 @@ defmodule LambdaEthereumConsensus.StateTransition.Accessors do
         get_seed(
           state,
           epoch,
-          <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0>> <> Misc.uint_to_bytes4(state.slot)
-        )
+          <<0::32>>
+        ) <> Misc.uint_to_bytes4(state.slot)
       )
 
     indices = get_active_validator_indices(state, epoch)
