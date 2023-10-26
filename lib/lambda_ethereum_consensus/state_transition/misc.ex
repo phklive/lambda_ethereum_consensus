@@ -12,7 +12,6 @@ defmodule LambdaEthereumConsensus.StateTransition.Misc do
           list(SszTypes.validator_index()),
           SszTypes.bytes32()
         ) :: SszTypes.validator_index()
-
   def compute_proposer_index(_state, indices, _seed) when length(indices) <= 0 do
     {:error, "The length of indices is smaller or equal to 0"}
   end

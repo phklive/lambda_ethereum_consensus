@@ -20,13 +20,8 @@ defmodule LambdaEthereumConsensus.StateTransition.Operations do
       block.slot < state.latest_block_header.slot ->
         {:error, "Block is older than latest block header."}
 
-
       # Verify that proposer index is the correct index
       block.proposer_index != Accessors.get_beacon_proposer_index(state) ->
-        IO.puts("proposer index:")
-        IO.inspect(block.proposer_index)
-        IO.puts("Accessors get prop index:")
-        IO.inspect(Accessors.get_beacon_proposer_index(state))
         {:error, "Invalid proposer index"}
 
       # Verify that the parent matches

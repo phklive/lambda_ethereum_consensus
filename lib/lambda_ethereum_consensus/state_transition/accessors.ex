@@ -16,20 +16,15 @@ defmodule LambdaEthereumConsensus.StateTransition.Accessors do
     seed =
       :crypto.hash(
         :sha256,
-        get_seed(state, epoch, <<0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0>> <> Misc.uint_to_bytes4(state.slot))
+        get_seed(
+          state,
+          epoch,
+          <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0>> <> Misc.uint_to_bytes4(state.slot)
+        )
       )
 
     indices = get_active_validator_indices(state, epoch)
-
-    # IO.puts("epoch")
-    # IO.inspect(epoch)
-    # IO.puts("seed")
-    # IO.inspect(seed)
-    # IO.puts("indices:")
-    # IO.inspect(indices)
-    # IO.puts("index:")
-    # IO.inspect(
-    # Misc.compute_proposer_index(state, indices, seed))
 
     Misc.compute_proposer_index(state, indices, seed)
   end
